@@ -1,6 +1,6 @@
-package org.example;
+package io.expensetracker;
 
-public class Example {
+public class ExpenseTracker {
     public static void main(String[] args) {
         System.out.println("Hello world");
     }

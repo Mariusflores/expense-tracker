@@ -5,8 +5,8 @@
          https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>io.example</groupId>
-    <artifactId>project-name</artifactId>
+    <groupId>io.expensetracker</groupId>
+    <artifactId>expense-tracker</artifactId>
     <version>0.1.0</version>
 
     <properties>
