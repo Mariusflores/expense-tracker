@@ -23,6 +23,11 @@
             <version>5.11.0</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>io.babyredis</groupId>
+            <artifactId>baby-redis-client</artifactId>
+            <version>0.2.0</version>
+        </dependency>
     </dependencies>
      <build>
         <finalName>expense-tracker</finalName>
