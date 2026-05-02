@@ -1,4 +1,4 @@
-package org.example;
+package io.expensetracker;
 
 import org.junit.jupiter.api.Test;
 
