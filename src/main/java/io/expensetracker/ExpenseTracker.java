@@ -50,7 +50,7 @@ public static void help() {
                         long timestamp = System.currentTimeMillis();
                         client.sAdd("expenses:" + period, "expense:" + timestamp);
 
-                        client.set("expense" + period, String.format("%s|%s|%d", amountStr, "carry", timestamp));
+                        client.set("expense:" + timestamp, String.format("%s|%s|%d", amountStr, "carry", timestamp));
 
                 }
 
@@ -68,7 +68,7 @@ public static void help() {
                         // Add expense to set of expenses for the period, using timestamp as unique identifier (Could helper method to avoid duplication)
                         client.sAdd("expenses:" + period, "expense:" + timestamp);
 
-                        client.set("expense" + period, String.format("%s|%s|%d", amountStr, note, timestamp));
+                        client.set("expense:" + timestamp, String.format("%s|%s|%d", amountStr, note, timestamp));
                         if(balanceStr.contains("ERR Not found")) {
                             System.out.println("No balance found. Please carry funds first.");
                         } else {
@@ -106,7 +106,6 @@ public static void help() {
                                 System.out.printf("- %s: kr %s (%s)\n", date, amount, note);
                             }
                         }
-
                 }
 
                 case "help"-> {
