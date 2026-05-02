@@ -41,7 +41,7 @@ public static void help() {
                                 client.set(BALANCE_KEY, String.valueOf(balance));
                             } catch(BabyRedisException e) {
                                 client.set(BALANCE_KEY, String.valueOf(amount));
-}
+                            }
                         String period = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM"));
 
                         // Add period to set of periods (Could helper method to avoid duplication)
@@ -58,7 +58,14 @@ public static void help() {
                         String amountStr = args[1];
                         String note = args[2];
                         double amount = Double.parseDouble(amountStr);
-                        String balanceStr = client.get(BALANCE_KEY);
+                        try{
+                            double balance = Double.parseDouble(client.get(BALANCE_KEY));
+                            balance -= amount;
+                            client.set("balance", String.valueOf(balance));
+                        } catch(BabyRedisException e) {
+                            System.out.println("No balance found. Please carry funds first.");
+                        }
+
                         String period = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM"));
 
                         long timestamp = System.currentTimeMillis();
@@ -69,23 +76,16 @@ public static void help() {
                         client.sAdd("expenses:" + period, "expense:" + timestamp);
 
                         client.set("expense:" + timestamp, String.format("%s|%s|%d", amountStr, note, timestamp));
-                        if(balanceStr.contains("ERR Not found")) {
-                            System.out.println("No balance found. Please carry funds first.");
-                        } else {
-                            double balance = Double.parseDouble(balanceStr);
-                            balance -= amount;
-                            client.set("balance", String.valueOf(balance));
-                        }
                 }
 
                 case "balance"-> {
-                        String balanceStr = client.get("balance");
-                        if(balanceStr.contains("ERR Not found")) {
-                            System.out.println("No balance found. Please carry funds first.");
-                        } else {
-                            double balance = Double.parseDouble(balanceStr);
+                        try{
+                            double balance = Double.parseDouble(client.get(BALANCE_KEY));
                             System.out.printf("Current Balance: kr %.2f\n", balance);
-                        }
+                            } catch(BabyRedisException e) {
+                                System.out.println("No balance found. Please carry funds first.");
+
+                            }
 
                 }
 
