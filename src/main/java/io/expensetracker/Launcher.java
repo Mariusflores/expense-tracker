@@ -3,6 +3,7 @@ package io.expensetracker;
 import java.time.LocalDate;
 
 import io.babyredis.client.BabyRedisClient;
+import io.expensetracker.data.Expense;
 
 public class Launcher {
 
@@ -68,22 +69,15 @@ public class Launcher {
                 }
                 case "history" -> {
                     var expenses = expenseTracker.getHistory();
-                    if (expenses == null) {
+                    if (expenses.isEmpty()) {
                         System.out.println("No expenses found for the current month.");
                     } else {
                         System.out.println("Expenses for account " + expenseTracker.getActiveAccount(client) + " in " + expenseTracker.getCurrentPeriod() + ":");
-                        for (String expenseKey : expenses) {
-
-                            if(expenseKey.contains(expenseTracker.getActiveAccount(client))){
-                                String expenseData = client.get(expenseKey);
-                                String[] parts = expenseData.split("\\|");
-                                String amount = parts[0];
-                                String note = parts[1];
-                                long timestamp = Long.parseLong(parts[2]);
-                                LocalDate date = LocalDate.ofEpochDay(timestamp / (24 * 60 * 60 * 1000));
-                                System.out.printf("- %s: kr %s (%s)\n", date, amount, note);
-
-                            }
+                        for (Expense expense : expenses) {
+                            
+                            LocalDate date = LocalDate.ofEpochDay(expense.getTimestamp() / (24 * 60 * 60 * 1000));
+                            
+                            System.out.printf("- %s: kr %s (%s)\n", date, expense.getAmount(), expense.getNote());
                         }
                     }
                 }
