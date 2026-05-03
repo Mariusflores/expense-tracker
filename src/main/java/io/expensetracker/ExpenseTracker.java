@@ -2,9 +2,12 @@ package io.expensetracker;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 
 import io.babyredis.client.BabyRedisClient;
 import io.babyredis.error.BabyRedisException;
+import io.expensetracker.data.Expense;
 
 public class ExpenseTracker {
 
@@ -67,9 +70,12 @@ public class ExpenseTracker {
         client.sAdd(PERIODS_KEY, period);
         // Add expense to set of expenses for the period, using timestamp as unique identifier (Could helper method to avoid duplication)
         long timestamp = System.currentTimeMillis();
-        client.sAdd("expenses:" + period, String.format("expense:%s:%d", getActiveAccount(client), timestamp));
+
+        Expense expense = new Expense(getActiveAccount(client), amount, "transfer", timestamp);
+
+        client.sAdd("expenses:" + period, expense.getKey());
     
-        client.set(String.format("expense:%s:%d", getActiveAccount(client), timestamp), String.format("%s|%s|%d", amount, "carry", timestamp));
+        client.set(expense.getKey(), expense.toStorageString());
     
     }
 
@@ -89,8 +95,9 @@ public class ExpenseTracker {
         // Add period to set of periods (Could helper method to avoid duplication)
         client.sAdd(ExpenseTracker.PERIODS_KEY, period);
         // Add expense to set of expenses for the period, using timestamp as unique identifier (Could helper method to avoid duplication)
-        client.sAdd("expenses:" + period, String.format("expense:%s:%d", getActiveAccount(client), timestamp));
-        client.set(String.format("expense:%s:%d", getActiveAccount(client), timestamp), String.format("%s|%s|%d", amount, note, timestamp));
+        Expense expense = new Expense(getActiveAccount(client), amount, note, timestamp);
+        client.sAdd("expenses:" + period, expense.getKey());
+        client.set(expense.getKey(), expense.toStorageString());
 
     
     }
@@ -106,11 +113,27 @@ public class ExpenseTracker {
         return balance;
     }
 
-    public String[] getHistory(){
+    public List<Expense> getHistory(){
             
         var expenses = client.sMembers("expenses:" + getCurrentPeriod());
 
-        return expenses != null ? expenses : new String[0];
+        var result = new ArrayList<Expense>();
+
+        if(expenses == null){
+            return result;
+        }
+
+
+        for (String expenseKey : expenses) {
+            if(expenseKey.contains(getActiveAccount(client))){
+                String expenseData = client.get(expenseKey);
+                Expense expense = Expense.fromStorageString(expenseKey, expenseData);
+                result.add(expense);
+            }
+        }
+        return result;
+
+        
     }
 
     public String getCurrentPeriod(){
