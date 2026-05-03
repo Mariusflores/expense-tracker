@@ -99,7 +99,6 @@ public class ExpenseTracker {
         double balance = 0.0;
         try{
             balance = Double.parseDouble(client.get(String.format("%s:balance", getActiveAccount(client))));
-            System.out.printf("Current Balance for account %s: kr %.2f\n", getActiveAccount(client), balance);
             return balance;
         } catch(BabyRedisException e) {
             System.out.println("No balance found. Please carry funds first.");
