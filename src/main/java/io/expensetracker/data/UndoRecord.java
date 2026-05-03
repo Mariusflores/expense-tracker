@@ -30,6 +30,33 @@ public class UndoRecord {
         this.actionType = actionType;
     }
 
+    // Serialize UndoRecord to a string for storage in Redis
+    public String toStorageString() {
+        // Use '||' as delimiter to avoid conflicts with notes containing '|'
+        return String.join("||",
+            expenseKey == null ? "" : expenseKey,
+            account == null ? "" : account,
+            Double.toString(amount),
+            Double.toString(previousBalance),
+            note == null ? "" : note,
+            Long.toString(timestamp),
+            actionType == null ? "" : actionType.name()
+        );
+    }
+
+    // Deserialize UndoRecord from a storage string
+    public static UndoRecord fromStorageString(String s) {
+        String[] parts = s.split("\\|\\|", -1); // -1 to include trailing empty strings
+        String expenseKey = parts[0].isEmpty() ? null : parts[0];
+        String account = parts[1].isEmpty() ? null : parts[1];
+        double amount = Double.parseDouble(parts[2]);
+        double previousBalance = Double.parseDouble(parts[3]);
+        String note = parts[4];
+        long timestamp = Long.parseLong(parts[5]);
+        ActionType actionType = parts[6].isEmpty() ? null : ActionType.valueOf(parts[6]);
+        return new UndoRecord(expenseKey, account, amount, previousBalance, note, timestamp, actionType);
+    }
+
     public String getExpenseKey() {
         return expenseKey;
     }

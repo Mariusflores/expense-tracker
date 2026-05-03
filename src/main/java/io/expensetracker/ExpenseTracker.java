@@ -4,7 +4,6 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Stack;
 
 import io.babyredis.client.BabyRedisClient;
 import io.babyredis.error.BabyRedisException;
@@ -19,8 +18,18 @@ public class ExpenseTracker {
     private static final String ACCOUNTS_KEY = "accounts";
     private static final String ACTIVE_ACCOUNT_KEY = "active_account";
 
+    private static final String UNDO_KEY_PREFIX = "undo:";
+    private static final String EXPENSES_KEY_PREFIX = "expenses:";
+    private static final String BALANCE_KEY_SUFFIX = ":balance";
+    private final static String PERIOD_FORMAT = "yyyy-MM";
+
+
+    private static final String CARRY_NOTE = "carry";
+    private static final String BALANCE_CORRECTION = "balance correction";
+    private final static String DEFAULT_AMOUNT = "0.0";
+
+
     private final BabyRedisClient client;
-    private Stack<UndoRecord> undoStack = new Stack<>();
 
     public ExpenseTracker(BabyRedisClient client) {
         this.client = client;
@@ -49,7 +58,7 @@ public class ExpenseTracker {
         client.sAdd(ExpenseTracker.ACCOUNTS_KEY, accountName);
         client.set(ExpenseTracker.ACTIVE_ACCOUNT_KEY, accountName);
 
-        client.set(getBalanceKey(accountName), "0.0");
+        client.set(getBalanceKey(accountName), DEFAULT_AMOUNT);
 
     }
 
@@ -82,7 +91,7 @@ public class ExpenseTracker {
         } catch (BabyRedisException e) {
             client.set(getBalanceKey(getActiveAccount(client)), String.valueOf(amount));
         }
-        String period = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM"));
+        String period = LocalDate.now().format(DateTimeFormatter.ofPattern(PERIOD_FORMAT));
 
         // Add period to set of periods (Could helper method to avoid duplication)
         client.sAdd(PERIODS_KEY, period);
@@ -93,11 +102,11 @@ public class ExpenseTracker {
 
         // Create expense object for the carry action. The note for carry actions can be
         // set to a default value like "carry" or "deposit".
-        Expense expense = new Expense(getActiveAccount(client), amount, "deposit", timestamp);
+        Expense expense = new Expense(getActiveAccount(client), amount, CARRY_NOTE, timestamp);
 
         // Create undo record for the carry action and push it to the undo stack
         UndoRecord undoRecord = new UndoRecord(expense, previousBalance, ActionType.CARRY);
-        undoStack.push(undoRecord);
+        client.set(getUndoKey(undoRecord.getAccount()), undoRecord.toStorageString());
 
         // Store the carry action as an expense for historical purposes, even though
         // it's not technically an expense,
@@ -121,7 +130,7 @@ public class ExpenseTracker {
             return;
         }
 
-        String period = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM"));
+        String period = LocalDate.now().format(DateTimeFormatter.ofPattern(PERIOD_FORMAT));
         long timestamp = System.currentTimeMillis();
 
         // Add period to set of periods (Could helper method to avoid duplication)
@@ -133,7 +142,7 @@ public class ExpenseTracker {
 
         // Create undo record for the expense action and push it to the undo stack
         UndoRecord undoRecord = new UndoRecord(expense, previousBalance, ActionType.SPENT);
-        undoStack.push(undoRecord);
+        client.set(getUndoKey(undoRecord.getAccount()), undoRecord.toStorageString());
 
         // Store the expense in Redis
         client.sAdd(getExpensesKey(period), expense.getKey());
@@ -179,52 +188,59 @@ public class ExpenseTracker {
     // Method to undo the last action (carry, spent, or balance correction), used
     // for correcting mistakes or reverting unintended actions
     public void undoLastAction() {
-        if (undoStack.isEmpty()) {
-            System.out.println("No actions to undo.");
-            return;
+
+        UndoRecord lastAction;
+        try {
+            lastAction = UndoRecord
+                    .fromStorageString(client.get(getUndoKey(getActiveAccount(client))));
+
+            switch (lastAction.getActionType()) {
+                case CARRY:
+                    // To undo a carry action, we need to subtract the carried amount from the
+                    // balance and delete the corresponding expense record
+                    double previousBalance = lastAction.getPreviousBalance();
+                    client.set(getBalanceKey(lastAction.getAccount()), String.valueOf(previousBalance));
+
+                    // Delete the corresponding expense record
+                    client.sRem(getExpensesKey(getCurrentPeriod()), lastAction.getExpenseKey());
+                    client.delete(lastAction.getExpenseKey());
+                    break;
+
+                case SPENT:
+                    // To undo a spent action, we need to add the spent amount back to the balance
+                    // and delete the corresponding expense record
+                    previousBalance = lastAction.getPreviousBalance();
+                    client.set(getBalanceKey(lastAction.getAccount()), String.valueOf(previousBalance));
+
+                    // Delete the corresponding expense record
+                    client.sRem(getExpensesKey(getCurrentPeriod()), lastAction.getExpenseKey());
+                    client.delete(lastAction.getExpenseKey());
+                    break;
+
+                case BALANCE:
+                    // To undo a balance correction, we need to set the balance back to the previous
+                    // balance
+                    client.set(getBalanceKey(lastAction.getAccount()),
+                            String.valueOf(lastAction.getPreviousBalance()));
+                    break;
+
+                default:
+                    System.out.println("Unknown action type. Cannot undo.");
+            }
+
+        } catch (BabyRedisException e) {
+            System.out.println("No action to undo for the current account.");
+        }finally{
+            // Clear the undo record after undoing the action
+            client.delete(getUndoKey(getActiveAccount(client)));
         }
 
-        UndoRecord lastAction = undoStack.pop();
-
-        switch (lastAction.getActionType()) {
-            case CARRY:
-                // To undo a carry action, we need to subtract the carried amount from the
-                // balance and delete the corresponding expense record
-                double previousBalance = lastAction.getPreviousBalance();
-                client.set(String.format("%s:balance", lastAction.getAccount()), String.valueOf(previousBalance));
-
-                // Delete the corresponding expense record
-                client.sRem(getExpensesKey(getCurrentPeriod()), lastAction.getExpenseKey());
-                client.delete(lastAction.getExpenseKey());
-                break;
-
-            case SPENT:
-                // To undo a spent action, we need to add the spent amount back to the balance
-                // and delete the corresponding expense record
-                previousBalance = lastAction.getPreviousBalance();
-                client.set(getBalanceKey(lastAction.getAccount()), String.valueOf(previousBalance));
-
-                // Delete the corresponding expense record
-                client.sRem(getExpensesKey(getCurrentPeriod()), lastAction.getExpenseKey());
-                client.delete(lastAction.getExpenseKey());
-                break;
-
-            case BALANCE:
-                // To undo a balance correction, we need to set the balance back to the previous
-                // balance
-                client.set(getBalanceKey(lastAction.getAccount()),
-                        String.valueOf(lastAction.getPreviousBalance()));
-                break;
-
-            default:
-                System.out.println("Unknown action type. Cannot undo.");
-        }
     }
 
     // Helper method to get current period in "yyyy-MM" format, used for organizing
     // expenses by month
     public String getCurrentPeriod() {
-        return LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM"));
+        return LocalDate.now().format(DateTimeFormatter.ofPattern(PERIOD_FORMAT));
     }
 
     // Helper method to get active account, used for associating expenses and
@@ -274,11 +290,11 @@ public class ExpenseTracker {
                 getActiveAccount(client),
                 0.0,
                 previousBalance,
-                "balance correction",
+                BALANCE_CORRECTION,
                 System.currentTimeMillis(),
                 ActionType.BALANCE);
 
-        undoStack.push(undoRecord);
+        client.set(getUndoKey(undoRecord.getAccount()), undoRecord.toStorageString());
 
         client.set(getBalanceKey(getActiveAccount(client)), String.valueOf(balance));
     }
@@ -301,7 +317,7 @@ public class ExpenseTracker {
                 for (Expense expense : expenseList) {
                     // Extract the period from the expense timestamp
                     LocalDate date = LocalDate.ofEpochDay(expense.getTimestamp() / (24 * 60 * 60 * 1000));
-                    String period = date.format(DateTimeFormatter.ofPattern("yyyy-MM"));
+                    String period = date.format(DateTimeFormatter.ofPattern(PERIOD_FORMAT));
 
                     // Delete the expense key and remove it from the period set
                     client.sRem(getExpensesKey(period), expense.getKey());
@@ -316,13 +332,18 @@ public class ExpenseTracker {
         }
     }
 
-    // Helper method to construct balance key for a given account, used for operations
+    // Helper method to construct balance key for a given account, used for
+    // operations
     // that involve accessing or modifying the balance of a specific account
     private String getBalanceKey(String accountName) {
-        return String.format("%s:balance", accountName);
+        return String.format("%s%s",  accountName, BALANCE_KEY_SUFFIX);
     }
 
     private String getExpensesKey(String period) {
-        return String.format("expenses:%s", period);
+        return String.format("%s%s", EXPENSES_KEY_PREFIX, period);
+    }
+
+    private String getUndoKey(String accountName) {
+        return String.format("%s%s", UNDO_KEY_PREFIX, accountName);
     }
 }

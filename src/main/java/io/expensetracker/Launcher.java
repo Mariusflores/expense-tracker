@@ -88,6 +88,11 @@ public class Launcher {
                     }
                 }
 
+                case "undo" -> {
+                    expenseTracker.undoLastAction();
+                    System.out.println("Last action undone for account " + expenseTracker.getActiveAccount(client) + ".");
+                }
+
                 //Admin / Cleanup commands
                 case "correct-balance" -> {
 
@@ -145,6 +150,8 @@ public class Launcher {
         System.out.println("  spent <amount> <note>           Record an expense");
         System.out.println("  balance                         Show current balance");
         System.out.println("  history                         Show expenses for current month");
+        System.out.println("  correct-balance <amount> --confirm  Directly set the balance for the active account (requires --confirm)");
+        System.out.println("  undo                            Undo the last operation for the active account");
         System.out.println("  delete-account <account> --confirm [--delete-history]  Delete an account. Add --delete-history to also remove all associated expense history. Without the flag, history is retained.");
         System.out.println("  help                            Show this message");
         System.out.println("=======================");
