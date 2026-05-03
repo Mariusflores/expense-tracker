@@ -14,16 +14,27 @@ as the data store.
 - Running balance updated on every transaction
 - Monthly expense history with dates and notes
 - Period-based tracking (monthly)
+- Multi-account support
+- Delete account with optional history removal (`--delete-history` flag)
+- (Planned) Undo last expense/operation
 
 ## Usage
 
 ```bash
-carry 2000                   # Add funds to balance
-spent 350 groceries          # Record an expense
-spent 200 online-shopping    # Record another expense
-balance                      # Show current balance
-history                      # Show expenses for current month
-help                         # Show available commands
+migrate                                    # One-time migration from single to multi-account model
+create myaccount                           # Create a new account
+switch myaccount                           # Switch to a different account
+list-accounts                              # List all accounts
+active-account                             # Show the active account
+carry 2000                                 # Add funds to balance
+spent 350 groceries                        # Record an expense
+spent 200 online-shopping                  # Record another expense
+balance                                    # Show current balance
+history                                    # Show expenses for current month
+correct-balance 1234 --confirm             # Directly set the balance for the active account (requires --confirm)
+delete-account myaccount --confirm                  # Delete an account (history retained)
+delete-account myaccount --confirm --delete-history # Delete an account and all its expense history
+help                                       # Show available commands
 ```
 
 ## Prerequisites
