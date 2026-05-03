@@ -136,16 +136,17 @@ public class Launcher {
     public static void help() {
         System.out.println("=== Expense Tracker ===");
         System.out.println("Usage:");
-        System.out.println("  migrate              one-time setup migrate one-balance model to multi-account model");
-        System.out.println("  create <name>               Create a new account");
-        System.out.println("  switch <account>            Switch to a different account");
-        System.out.println("  list-accounts               List all accounts");
-        System.out.println("  active-account              Show the active account");
-        System.out.println("  carry <amount>              Add funds to balance");
-        System.out.println("  spent <amount> <note>       Record an expense");
-        System.out.println("  balance                     Show current balance");
-        System.out.println("  history                     Show expenses for current month");
-        System.out.println("  help                        Show this message");
+        System.out.println("  migrate                        one-time setup migrate one-balance model to multi-account model");
+        System.out.println("  create <name>                   Create a new account");
+        System.out.println("  switch <account>                Switch to a different account");
+        System.out.println("  list-accounts                   List all accounts");
+        System.out.println("  active-account                  Show the active account");
+        System.out.println("  carry <amount>                  Add funds to balance");
+        System.out.println("  spent <amount> <note>           Record an expense");
+        System.out.println("  balance                         Show current balance");
+        System.out.println("  history                         Show expenses for current month");
+        System.out.println("  delete-account <account> --confirm [--delete-history]  Delete an account. Add --delete-history to also remove all associated expense history. Without the flag, history is retained.");
+        System.out.println("  help                            Show this message");
         System.out.println("=======================");
     }
 }
