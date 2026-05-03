@@ -25,6 +25,8 @@ public class Launcher {
             }
 
             switch (command) {
+
+                // Account management commands
                 case "create" -> {
                     String accountName = args[1];
                     expenseTracker.createAccount(accountName);
@@ -52,6 +54,8 @@ public class Launcher {
                         System.out.println("Active account: " + activeAccount);
                     }
                 }
+
+                // Balance and expense commands
                 case "carry" -> {
                     double amount = Double.parseDouble(args[1]);
                     expenseTracker.logDeposit(amount);
@@ -67,6 +71,8 @@ public class Launcher {
                     double balance = expenseTracker.getBalance();
                     System.out.printf("Current balance for account %s: kr %.2f\n", expenseTracker.getActiveAccount(client), balance);
                 }
+
+                // History command
                 case "history" -> {
                     var expenses = expenseTracker.getHistory();
                     if (expenses.isEmpty()) {
@@ -81,6 +87,40 @@ public class Launcher {
                         }
                     }
                 }
+
+                //Admin / Cleanup commands
+                case "correct-balance" -> {
+
+                    if(args.length > 2 && args[2].equalsIgnoreCase("--confirm")){
+                        double balance = Double.parseDouble(args[1]);
+                        expenseTracker.correctBalance(balance);
+                        System.out.printf("Balance for account %s corrected to kr %.2f\n", expenseTracker.getActiveAccount(client), balance);
+                
+                    }else{
+                        System.out.println("This command will directly set the balance for the active account. Use with caution.");
+                        System.out.println("To confirm, run the command again with the --confirm flag.");
+            
+                    }
+                }
+
+                case "delete-account" -> {
+                    String accountName = args[1];
+                    if(args.length > 2 && args[2].equalsIgnoreCase("--confirm")){
+                        if(args.length > 3 && args[3].equalsIgnoreCase("--delete-history")){
+                            expenseTracker.deleteAccount(accountName, true);
+                            System.out.println("Account '" + accountName + "' and all associated history deleted.");
+                        }else{
+                            expenseTracker.deleteAccount(accountName, false);
+                            System.out.println("Account '" + accountName + "' deleted. Associated history has been retained.");
+                        }
+                    }else{
+
+                        System.out.println("This command will permanently delete the account and all associated data. Use with caution.");
+                        System.out.println("To confirm, run the command again with the --confirm flag.");
+                    }
+                }
+
+                // Help command
                 case "help" -> {
                     Launcher.help();
                 }

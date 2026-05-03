@@ -132,8 +132,6 @@ public class ExpenseTracker {
             }
         }
         return result;
-
-        
     }
 
     public String getCurrentPeriod(){
@@ -151,5 +149,63 @@ public class ExpenseTracker {
             System.out.println("No active account found. Please create or switch to an account first.");
         }
         return activeAccount;
+    }
+
+        public List<Expense> getAllExpensesByAccount(String accountName){
+
+            var result = new ArrayList<Expense>();
+
+
+            for(String period : client.sMembers(PERIODS_KEY)){
+                var expenses = client.sMembers("expenses:" + period);
+                if(expenses == null){
+                    continue;
+                }
+                
+                for (String expenseKey : expenses) {
+                    if(expenseKey.contains(accountName)){
+                        String expenseData = client.get(expenseKey);
+                        Expense expense = Expense.fromStorageString(expenseKey, expenseData);
+                        result.add(expense);
+                    }
+                }
+            }
+            return result;
+         }
+
+
+    public void correctBalance(double balance) {
+        client.set(String.format("%s:balance", getActiveAccount(client)), String.valueOf(balance));
+    }
+
+
+    public void deleteAccount(String accountName, boolean deleteHistory) {
+        try{
+            // Remove account from accounts set
+            client.sRem(ACCOUNTS_KEY, accountName);
+
+            // Delete balance key for the account
+            client.delete(accountName + ":balance");
+
+            // Get all expenses for the account and delete them
+            List<Expense> expenseList = getAllExpensesByAccount(accountName);
+
+            if(deleteHistory){
+                for(Expense expense : expenseList){
+                    // Extract the period from the expense timestamp
+                    LocalDate date = LocalDate.ofEpochDay(expense.getTimestamp() / (24 * 60 * 60 * 1000));
+                    String period = date.format(DateTimeFormatter.ofPattern("yyyy-MM"));
+
+                    // Delete the expense key and remove it from the period set
+                    client.sRem(String.format("expenses:%s", period), expense.getKey());
+                    client.delete(expense.getKey());
+            }
+            }
+
+
+            // Optionally, could also delete expenses related to the account, but for now we will keep them for historical purposes
+        } catch(BabyRedisException e) {
+            System.out.println("Error occurred while deleting account.");
+        }
     }
 }
