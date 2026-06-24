@@ -1,10 +1,14 @@
 package io.expensetracker.data;
 
 public class Expense {
+
+    private final static String EXPENSE_KEY_PREFIX = "expense:";
+
     private String account;
     private double amount;
     private String note;
     private long timestamp;
+
 
     public Expense(String account, double amount, String note, long timestamp) {
         this.account = account;
@@ -14,7 +18,7 @@ public class Expense {
     }
 
     public String getKey(){
-        return String.format("expense:%s:%d", account, timestamp);
+        return String.format("%s:%s:%d", EXPENSE_KEY_PREFIX, account, timestamp);
     }
 
     public String toStorageString(){

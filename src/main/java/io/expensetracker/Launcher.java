@@ -25,6 +25,8 @@ public class Launcher {
             }
 
             switch (command) {
+
+                // Account management commands
                 case "create" -> {
                     String accountName = args[1];
                     expenseTracker.createAccount(accountName);
@@ -52,6 +54,8 @@ public class Launcher {
                         System.out.println("Active account: " + activeAccount);
                     }
                 }
+
+                // Balance and expense commands
                 case "carry" -> {
                     double amount = Double.parseDouble(args[1]);
                     expenseTracker.logDeposit(amount);
@@ -67,6 +71,8 @@ public class Launcher {
                     double balance = expenseTracker.getBalance();
                     System.out.printf("Current balance for account %s: kr %.2f\n", expenseTracker.getActiveAccount(client), balance);
                 }
+
+                // History command
                 case "history" -> {
                     var expenses = expenseTracker.getHistory();
                     if (expenses.isEmpty()) {
@@ -81,6 +87,45 @@ public class Launcher {
                         }
                     }
                 }
+
+                case "undo" -> {
+                    expenseTracker.undoLastAction();
+                    System.out.println("Last action undone for account " + expenseTracker.getActiveAccount(client) + ".");
+                }
+
+                //Admin / Cleanup commands
+                case "correct-balance" -> {
+
+                    if(args.length > 2 && args[2].equalsIgnoreCase("--confirm")){
+                        double balance = Double.parseDouble(args[1]);
+                        expenseTracker.correctBalance(balance);
+                        System.out.printf("Balance for account %s corrected to kr %.2f\n", expenseTracker.getActiveAccount(client), balance);
+                
+                    }else{
+                        System.out.println("This command will directly set the balance for the active account. Use with caution.");
+                        System.out.println("To confirm, run the command again with the --confirm flag.");
+            
+                    }
+                }
+
+                case "delete-account" -> {
+                    String accountName = args[1];
+                    if(args.length > 2 && args[2].equalsIgnoreCase("--confirm")){
+                        if(args.length > 3 && args[3].equalsIgnoreCase("--delete-history")){
+                            expenseTracker.deleteAccount(accountName, true);
+                            System.out.println("Account '" + accountName + "' and all associated history deleted.");
+                        }else{
+                            expenseTracker.deleteAccount(accountName, false);
+                            System.out.println("Account '" + accountName + "' deleted. Associated history has been retained.");
+                        }
+                    }else{
+
+                        System.out.println("This command will permanently delete the account and all associated data. Use with caution.");
+                        System.out.println("To confirm, run the command again with the --confirm flag.");
+                    }
+                }
+
+                // Help command
                 case "help" -> {
                     Launcher.help();
                 }
@@ -96,16 +141,19 @@ public class Launcher {
     public static void help() {
         System.out.println("=== Expense Tracker ===");
         System.out.println("Usage:");
-        System.out.println("  migrate              one-time setup migrate one-balance model to multi-account model");
-        System.out.println("  create <name>               Create a new account");
-        System.out.println("  switch <account>            Switch to a different account");
-        System.out.println("  list-accounts               List all accounts");
-        System.out.println("  active-account              Show the active account");
-        System.out.println("  carry <amount>              Add funds to balance");
-        System.out.println("  spent <amount> <note>       Record an expense");
-        System.out.println("  balance                     Show current balance");
-        System.out.println("  history                     Show expenses for current month");
-        System.out.println("  help                        Show this message");
+        System.out.println("  migrate                        one-time setup migrate one-balance model to multi-account model");
+        System.out.println("  create <name>                   Create a new account");
+        System.out.println("  switch <account>                Switch to a different account");
+        System.out.println("  list-accounts                   List all accounts");
+        System.out.println("  active-account                  Show the active account");
+        System.out.println("  carry <amount>                  Add funds to balance");
+        System.out.println("  spent <amount> <note>           Record an expense");
+        System.out.println("  balance                         Show current balance");
+        System.out.println("  history                         Show expenses for current month");
+        System.out.println("  correct-balance <amount> --confirm  Directly set the balance for the active account (requires --confirm)");
+        System.out.println("  undo                            Undo the last operation for the active account");
+        System.out.println("  delete-account <account> --confirm [--delete-history]  Delete an account. Add --delete-history to also remove all associated expense history. Without the flag, history is retained.");
+        System.out.println("  help                            Show this message");
         System.out.println("=======================");
     }
 }
